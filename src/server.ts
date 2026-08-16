@@ -2,11 +2,13 @@ import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { config } from './config.js';
 import { createServer } from './mcp/create-server.js';
+import { registerOAuthRoutes, requireMcpOAuth } from './auth/oauth.js';
+import { runWithWallGoldApiKey } from './auth/context.js';
 
 const loopbackHosts=new Set(['127.0.0.1','localhost','::1']);
 const bindingIsLoopback=loopbackHosts.has(config.host);
-if(!bindingIsLoopback&&!config.mcpSharedBearer&&!config.allowUnauthenticatedMcp){
-  throw new Error('برای bind غیرلوکال، authentication لازم است. MCP_SHARED_BEARER را برای private single-user تنظیم کن یا OAuth 2.1 را برای multi-user پیاده‌سازی کن.');
+if(!bindingIsLoopback&&!config.mcpOauthEnabled&&!config.mcpSharedBearer&&!config.allowUnauthenticatedMcp){
+  throw new Error('برای bind غیرلوکال، authentication لازم است. MCP_OAUTH_ENABLED را برای ChatGPT فعال کن، MCP_SHARED_BEARER را برای private single-user غیر-ChatGPT تنظیم کن، یا OAuth 2.1 مناسب پیاده‌سازی کن.');
 }
 
 const normalizeOrigin=(v:string)=>{try{return new URL(v).origin.toLowerCase();}catch{return ''}};
@@ -14,8 +16,22 @@ const allowedOrigins=new Set(config.allowedOrigins.map(normalizeOrigin).filter(B
 
 const app=express();
 app.disable('x-powered-by');
+app.set('trust proxy',true);
+
+// Pin the externally visible OAuth origin when configured instead of trusting user-controlled forwarded headers.
+if(config.mcpPublicBaseUrl){
+  const publicUrl=new URL(config.mcpPublicBaseUrl);
+  app.use((req,_res,next)=>{
+    req.headers['x-forwarded-host']=publicUrl.host;
+    req.headers['x-forwarded-proto']=publicUrl.protocol.replace(':','');
+    next();
+  });
+}
+
 app.use(express.json({limit:'2mb'}));
-app.get('/health',(_req,res)=>res.json({ok:true,service:'wallgold-copilot',tradeToolAdvertised:config.allowMcpTradeExecution}));
+app.get('/health',(_req,res)=>res.json({ok:true,service:'wallgold-copilot',version:'0.3.0',oauthEnabled:config.mcpOauthEnabled,publicBaseConfigured:Boolean(config.mcpPublicBaseUrl),tradeToolAdvertised:config.allowMcpTradeExecution}));
+
+if(config.mcpOauthEnabled) registerOAuthRoutes(app);
 
 app.use('/mcp',(req,res,next)=>{
   const host=(req.hostname||'').toLowerCase();
@@ -24,6 +40,7 @@ app.use('/mcp',(req,res,next)=>{
   const origin=req.headers.origin;
   if(origin&&allowedOrigins.size&&!allowedOrigins.has(normalizeOrigin(origin))) return res.status(403).json({error:'origin_not_allowed'});
 
+  if(config.mcpOauthEnabled) return requireMcpOAuth(req,res,next);
   if(config.mcpSharedBearer){
     const auth=req.headers.authorization;
     if(auth!==`Bearer ${config.mcpSharedBearer}`) return res.status(401).json({error:'unauthorized'});
@@ -35,15 +52,17 @@ app.use('/mcp',(req,res,next)=>{
 
 app.all('/mcp',async(req,res)=>{
   try{
-    const server=createServer();
-    const transport=new StreamableHTTPServerTransport({sessionIdGenerator:undefined});
-    res.on('close',()=>{void transport.close();void server.close();});
-    await server.connect(transport);
-    await transport.handleRequest(req,res,req.body);
+    await runWithWallGoldApiKey(res.locals.wallgoldApiKey as string|undefined,async()=>{
+      const server=createServer();
+      const transport=new StreamableHTTPServerTransport({sessionIdGenerator:undefined});
+      res.on('close',()=>{void transport.close();void server.close();});
+      await server.connect(transport);
+      await transport.handleRequest(req,res,req.body);
+    });
   }catch(e:any){
     console.error('MCP request failed',{name:e?.name??'Error',status:e?.status??null,errorCode:e?.errorCode??null});
     if(!res.headersSent)res.status(500).json({error:'mcp_error',message:'خطای داخلی MCP.'});
   }
 });
 
-app.listen(config.port,config.host,()=>console.log(`WallGold Copilot MCP: http://${config.host}:${config.port}/mcp`));
+app.listen(config.port,config.host,()=>console.log(`WallGold Copilot MCP: http://${config.host}:${config.port}/mcp | OAuth: ${config.mcpOauthEnabled?'ON':'OFF'}${config.mcpPublicBaseUrl?` | Public: ${config.mcpPublicBaseUrl}/mcp`:''}`));

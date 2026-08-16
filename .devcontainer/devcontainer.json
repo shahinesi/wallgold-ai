@@ -11,7 +11,8 @@
   "remoteEnv": {
     "HOST": "0.0.0.0",
     "PORT": "3000",
-    "ALLOW_UNAUTHENTICATED_MCP": "true",
+    "MCP_OAUTH_ENABLED": "true",
+    "ALLOW_UNAUTHENTICATED_MCP": "false",
     "MCP_ALLOWED_HOSTS": "",
     "MCP_ALLOWED_ORIGINS": "",
     "WALLGOLD_MCP_ALLOW_TRADE_EXECUTION": "false",

@@ -1,0 +1,29 @@
+{
+  "name": "WallGold AI Codespace",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "WallGold MCP",
+      "onAutoForward": "silent"
+    }
+  },
+  "remoteEnv": {
+    "HOST": "0.0.0.0",
+    "PORT": "3000",
+    "ALLOW_UNAUTHENTICATED_MCP": "true",
+    "MCP_ALLOWED_HOSTS": "",
+    "MCP_ALLOWED_ORIGINS": "",
+    "WALLGOLD_MCP_ALLOW_TRADE_EXECUTION": "false",
+    "PRIVATE_EXECUTION_ENABLED": "false"
+  },
+  "postCreateCommand": "npm install && npm run build",
+  "postStartCommand": "bash .devcontainer/start-mcp.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}

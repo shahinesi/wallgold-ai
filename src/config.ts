@@ -16,6 +16,8 @@ export const config = {
   wallgoldDefaultSymbol: process.env.WALLGOLD_DEFAULT_SYMBOL ?? 'GLD_18C_750TMN',
   wallgoldRequestTimeoutMs: num(process.env.WALLGOLD_REQUEST_TIMEOUT_MS, 10_000),
   wallgoldMinExecutionTtlSeconds: num(process.env.WALLGOLD_MIN_EXECUTION_TTL_SECONDS, 4),
+  // Codespaces defaults to OAuth so a public forwarded port never exposes private WallGold data anonymously.
+  mcpOauthEnabled: bool(process.env.MCP_OAUTH_ENABLED, bool(process.env.CODESPACES, false)),
   mcpSharedBearer: process.env.MCP_SHARED_BEARER ?? '',
   allowUnauthenticatedMcp: bool(process.env.ALLOW_UNAUTHENTICATED_MCP, false),
   allowedHosts: (process.env.MCP_ALLOWED_HOSTS ?? 'localhost,127.0.0.1').split(',').map(s => s.trim()).filter(Boolean),

@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { getRequestWallGoldApiKey } from '../auth/context.js';
 
 export interface WallGoldBalance {
   currency: string;
@@ -83,7 +84,7 @@ function pickErrorCode(body: any): string | undefined {
 export class WallGoldClient {
   constructor(
     private baseUrl = config.wallgoldBaseUrl,
-    private apiKey = config.wallgoldApiKey,
+    private apiKey = getRequestWallGoldApiKey() ?? config.wallgoldApiKey,
   ) {}
 
   hasApiKey() {

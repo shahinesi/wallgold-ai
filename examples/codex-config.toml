@@ -1,0 +1,12 @@
+# حالت محلی پس از npm install && npm run build
+[mcp_servers.wallgold]
+command = "node"
+args = ["/ABSOLUTE/PATH/wallgold-copilot/dist/stdio.js"]
+env_vars = ["WALLGOLD_API_KEY", "PREVIEW_SIGNING_SECRET"]
+default_tools_approval_mode = "writes"
+
+# یا برای سرور HTTPS راه‌دور به جای بخش بالا:
+# [mcp_servers.wallgold]
+# url = "https://YOUR-HOST.example/mcp"
+# bearer_token_env_var = "WALLGOLD_MCP_BEARER"
+# default_tools_approval_mode = "writes"

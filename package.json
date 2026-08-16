@@ -1,0 +1,33 @@
+{
+  "name": "wallgold-copilot",
+  "version": "0.2.0",
+  "private": true,
+  "description": "MCP + ChatGPT/Codex plugin for Persian gold intelligence, WallGold portfolio visibility, risk, quote preview, monitoring and guarded private execution.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "trade:private": "tsx src/cli/private-trade.ts",
+    "smoke:wallgold": "tsx src/cli/smoke-wallgold.ts",
+    "start:stdio": "node dist/stdio.js",
+    "dev:stdio": "tsx src/stdio.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.30",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

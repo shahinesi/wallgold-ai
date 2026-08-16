@@ -1,0 +1,9 @@
+{
+  "wallgold": {
+    "command": "node",
+    "args": ["/ABSOLUTE/PATH/wallgold-copilot/dist/stdio.js"],
+    "env": {
+      "WALLGOLD_MCP_ALLOW_TRADE_EXECUTION": "false"
+    }
+  }
+}

@@ -17,8 +17,19 @@ const allowedOrigins=new Set(config.allowedOrigins.map(normalizeOrigin).filter(B
 const app=express();
 app.disable('x-powered-by');
 app.set('trust proxy',true);
+
+// Pin the externally visible OAuth origin when configured instead of trusting user-controlled forwarded headers.
+if(config.mcpPublicBaseUrl){
+  const publicUrl=new URL(config.mcpPublicBaseUrl);
+  app.use((req,_res,next)=>{
+    req.headers['x-forwarded-host']=publicUrl.host;
+    req.headers['x-forwarded-proto']=publicUrl.protocol.replace(':','');
+    next();
+  });
+}
+
 app.use(express.json({limit:'2mb'}));
-app.get('/health',(_req,res)=>res.json({ok:true,service:'wallgold-copilot',version:'0.3.0',oauthEnabled:config.mcpOauthEnabled,tradeToolAdvertised:config.allowMcpTradeExecution}));
+app.get('/health',(_req,res)=>res.json({ok:true,service:'wallgold-copilot',version:'0.3.0',oauthEnabled:config.mcpOauthEnabled,publicBaseConfigured:Boolean(config.mcpPublicBaseUrl),tradeToolAdvertised:config.allowMcpTradeExecution}));
 
 if(config.mcpOauthEnabled) registerOAuthRoutes(app);
 
@@ -54,4 +65,4 @@ app.all('/mcp',async(req,res)=>{
   }
 });
 
-app.listen(config.port,config.host,()=>console.log(`WallGold Copilot MCP: http://${config.host}:${config.port}/mcp | OAuth: ${config.mcpOauthEnabled?'ON':'OFF'}`));
+app.listen(config.port,config.host,()=>console.log(`WallGold Copilot MCP: http://${config.host}:${config.port}/mcp | OAuth: ${config.mcpOauthEnabled?'ON':'OFF'}${config.mcpPublicBaseUrl?` | Public: ${config.mcpPublicBaseUrl}/mcp`:''}`));

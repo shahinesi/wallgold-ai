@@ -1,7 +1,7 @@
 {
   "name": "wallgold-copilot",
-  "version": "0.2.0",
-  "description": "دستیار خصوصی فارسی تحلیل طلا، پرتفوی WallGold، مدیریت ریسک، هشدار، پیش‌نمایش معامله و بک‌تست برای ChatGPT و Codex.",
+  "version": "0.3.0",
+  "description": "دستیار خصوصی فارسی تحلیل طلا با اتصال OAuth به حساب WallGold، مدیریت ریسک، هشدار، پیش‌نمایش معامله و بک‌تست برای ChatGPT و Codex.",
   "author": {
     "name": "Private integration"
   },
@@ -11,13 +11,14 @@
     "wallgold",
     "finance",
     "persian",
-    "mcp"
+    "mcp",
+    "oauth"
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "دستیار خصوصی وال‌گلد",
+    "displayName": "WallGold AI",
     "shortDescription": "تحلیل و مدیریت هوشمند طلا به فارسی",
-    "longDescription": "تحلیل چندعاملی بازار طلا با خروجی فارسی، مشاهده پرتفوی WallGold، قیمت واقعی قابل معامله، کنترل ریسک، پیش‌نمایش معامله، هشدار، معامله آزمایشی و بک‌تست. نسخه عمومی هیچ معامله سرمایه‌گذاری را اجرا نمی‌کند.",
+    "longDescription": "تحلیل چندعاملی بازار طلا با خروجی فارسی، اتصال امن OAuth به حساب WallGold، مشاهده پرتفوی و قیمت واقعی قابل معامله، کنترل ریسک، پیش‌نمایش معامله، هشدار، معامله آزمایشی و بک‌تست. نسخه عمومی هیچ معامله سرمایه‌گذاری را اجرا نمی‌کند.",
     "developerName": "Private integration",
     "category": "Productivity",
     "capabilities": [

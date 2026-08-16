@@ -1,10 +1,11 @@
 # WallGold Copilot — دستیار فارسی هوشمند طلا
 
-**نسخه Audit‌شده: 0.2.0 — 2026-08-16**
+**نسخه: 0.3.0 — OAuth Account Connection — 2026-08-16**
 
 این پروژه یک MCP Server + Plugin برای ChatGPT و Codex است که هدفش فقط «نمایش قیمت» نیست؛ یک لایه تصمیم‌یار کامل برای طلا می‌سازد:
 
 - مشاهده بازار و موجودی WallGold
+- اتصال امن حساب WallGold با OAuth و صفحه فارسی ورود API Key
 - قیمت واقعی قابل معامله خرید/فروش با زمان انقضا
 - ارزش‌گذاری پرتفوی و سهم طلا/نقد
 - تحلیل شش‌بعدی: **طلای جهانی، دلار/ریال، تکنیکال، اقتصاد کلان، اخبار/ژئوپلیتیک، حباب داخلی**
@@ -39,7 +40,7 @@
 چه چیزی نظر را عوض می‌کند؟ ...
 ```
 
-## شروع
+## شروع محلی
 
 ```bash
 cp .env.example .env
@@ -51,13 +52,17 @@ npm run dev
 
 MCP روی `http://127.0.0.1:3000/mcp` و health روی `/health` بالا می‌آید.
 
-برای تست بازار عمومی و در صورت تنظیم API Key، اتصال private بدون چاپ secret:
+برای local/STDIO می‌توان API Key را فقط در Secret Manager یا `WALLGOLD_API_KEY` محیط اجرا گذاشت. API Key را داخل ChatGPT/Codex paste نکن.
 
-```bash
-npm run smoke:wallgold
+## اتصال ChatGPT با OAuth
+
+در GitHub Codespaces، OAuth به‌صورت پیش‌فرض فعال است. پورت 3000 را Public کن و در ChatGPT Plugin آدرس زیر را با Authentication = OAuth بده:
+
+```text
+https://<codespace>-3000.app.github.dev/mcp
 ```
 
-راهنمای امن ساخت و ثبت کلید: [`docs/API_KEY_SETUP_FA.md`](docs/API_KEY_SETUP_FA.md). **API Key را داخل ChatGPT/Codex paste نکنید.** آن را مستقیم در `WALLGOLD_API_KEY` یا Secret Manager محیط اجرا ثبت کنید.
+ChatGPT باید OAuth metadata را کشف کند و یک صفحه فارسی WallGold AI برای واردکردن API Key باز کند. کلید در آن صفحه مستقیماً با WallGold اعتبارسنجی می‌شود، هرگز به prompt/tool input نمی‌رود و در prototype Codespaces روی دیسک ذخیره نمی‌شود. جزئیات: [`docs/OAUTH_ONBOARDING.md`](docs/OAUTH_ONBOARDING.md).
 
 ## امنیت و اجرای معامله
 
@@ -83,8 +88,7 @@ WallGold لایه account/execution/quote را می‌دهد. برای اخبا�
 
 ## نکته انتشار عمومی
 
-طبق راهنمای فعلی OpenAI، Plugin عمومی نباید «اجرای معامله سرمایه‌گذاری» انجام دهد؛ ضمن اینکه connector عمومی یک سرویس شخص ثالث باید از نظر مجوز/همکاری با صاحب سرویس نیز بررسی شود. این مخزن از ابتدا طوری جدا شده که تحلیل بازار و داده‌های عمومی بدون اجرای معامله قابل ارائه باشند؛ قابلیت‌های وابسته به حساب WallGold برای انتشار عمومی نیازمند OAuth 2.1 و اتصال رسمی/مجاز WallGold هستند و اجرای واقعی معامله خصوصی می‌ماند.
-
+قابلیت‌های وابسته به حساب WallGold برای انتشار عمومی نیازمند integration رسمی/مجاز WallGold و معماری production-grade authorization/credential storage هستند. اجرای واقعی معامله خصوصی می‌ماند و در Codespaces/Plugin عمومی خاموش است.
 
 ## Audit مستندات WallGold
 
@@ -92,4 +96,4 @@ WallGold لایه account/execution/quote را می‌دهد. برای اخبا�
 
 ## اتصال API Key بدون افشای secret
 
-مهارت اختصاصی `api-key-onboarding` و ابزارهای `get_wallgold_api_key_setup_guide` / `check_wallgold_connection` اضافه شده‌اند. کاربر برای اتصال حساب **خود کلید را به ChatGPT یا Codex ارسال نمی‌کند**؛ secret در محیط اجرای MCP ثبت می‌شود.
+OAuth onboarding کاربر را به صفحه HTTPS خود WallGold AI می‌برد. API Key فقط همان‌جا وارد می‌شود، با WallGold اعتبارسنجی می‌شود و به session OAuth متصل می‌شود؛ مدل و tool schema هیچ فیلدی برای دریافت API Key ندارند.

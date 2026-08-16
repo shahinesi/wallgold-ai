@@ -1,8 +1,8 @@
 {
   "name": "wallgold-copilot",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "MCP + ChatGPT/Codex plugin for Persian gold intelligence, WallGold portfolio visibility, risk, quote preview, monitoring and guarded private execution.",
+  "description": "MCP + ChatGPT/Codex plugin for Persian gold intelligence, OAuth-based WallGold account connection, portfolio visibility, risk, quote preview, monitoring and guarded private execution.",
   "type": "module",
   "scripts": {
     "dev": "tsx src/server.ts",

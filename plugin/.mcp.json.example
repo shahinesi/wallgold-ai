@@ -1,9 +1,20 @@
 {
-  "wallgold": {
-    "command": "node",
-    "args": ["/ABSOLUTE/PATH/wallgold-copilot/dist/stdio.js"],
-    "env": {
-      "WALLGOLD_MCP_ALLOW_TRADE_EXECUTION": "false"
+  "mcpServers": {
+    "wallgold": {
+      "title": "WallGold AI",
+      "description": "ابزارهای تحلیل، پرتفوی، ریسک و پیش‌نمایش WallGold؛ بدون اجرای معامله در نسخه عمومی.",
+      "command": "node",
+      "args": ["./dist/stdio.js"],
+      "cwd": "..",
+      "env_vars": [
+        "WALLGOLD_API_KEY",
+        "WALLGOLD_BASE_URL",
+        "DATA_DIR",
+        "PREVIEW_SIGNING_SECRET"
+      ],
+      "env": {
+        "WALLGOLD_MCP_ALLOW_TRADE_EXECUTION": "false"
+      }
     }
   }
 }

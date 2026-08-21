@@ -1,36 +1,43 @@
 {
   "name": "wallgold-copilot",
-  "version": "0.3.0",
-  "description": "دستیار خصوصی فارسی تحلیل طلا با اتصال OAuth به حساب WallGold، مدیریت ریسک، هشدار، پیش‌نمایش معامله و بک‌تست برای ChatGPT و Codex.",
+  "version": "0.4.0",
+  "description": "دستیار فارسی تصمیم‌گیری طلا با خبر و رویداد زنده، تحلیل چندافقی، کالیبراسیون، پرتفوی WallGold و کنترل ریسک.",
   "author": {
     "name": "Private integration"
   },
   "license": "UNLICENSED",
+  "homepage": "https://github.com/shahinesi/wallgold-ai",
+  "repository": "https://github.com/shahinesi/wallgold-ai",
   "keywords": [
     "gold",
     "wallgold",
     "finance",
     "persian",
     "mcp",
-    "oauth"
+    "oauth",
+    "news",
+    "forecasting",
+    "risk-management"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "WallGold AI",
-    "shortDescription": "تحلیل و مدیریت هوشمند طلا به فارسی",
-    "longDescription": "تحلیل چندعاملی بازار طلا با خروجی فارسی، اتصال امن OAuth به حساب WallGold، مشاهده پرتفوی و قیمت واقعی قابل معامله، کنترل ریسک، پیش‌نمایش معامله، هشدار، معامله آزمایشی و بک‌تست. نسخه عمومی هیچ معامله سرمایه‌گذاری را اجرا نمی‌کند.",
+    "shortDescription": "رادار خبر، تحلیل طلا و کنترل ریسک به فارسی",
+    "longDescription": "تصمیم‌یار چندافقی طلا با رادار خبر و رویداد، اولویت منابع اولیه، تحلیل شش‌عاملی، سناریو و عدم‌قطعیت، کالیبراسیون با snapshot و shadow trade، بک‌تست محافظه‌کارانه، اتصال OAuth به پرتفوی WallGold و قیمت واقعی قابل معامله. نسخه عمومی هیچ معامله سرمایه‌گذاری را اجرا نمی‌کند و سود را تضمین نمی‌کند.",
     "developerName": "Private integration",
     "category": "Productivity",
     "capabilities": [
       "Read",
-      "Write"
+      "Write",
+      "Interactive"
     ],
     "defaultPrompt": [
-      "بازار طلا را کامل تحلیل کن و بگو الان خرید، فروش یا صبر منطقی‌تر است؛ همه‌چیز را فارسی و با درصد اطمینان توضیح بده.",
-      "پرتفوی طلای من را بررسی کن و بگو نسبت طلا و نقدینگی‌ام با سیاست مدیریت ریسک فعلی چه وضعی دارد.",
-      "برای خرید ده میلیون تومان طلا فقط پیش‌نمایش واقعی بگیر و اثرش روی موجودی و ریسک را نشان بده.",
-      "سناریوی صعودی و نزولی طلا را جداگانه بساز و بگو چه اتفاقی نظرت را عوض می‌کند.",
-      "عملکرد سیگنال‌های قبلی را با بک‌تست و معامله آزمایشی بررسی کن."
-    ]
+      "خبرها و داده‌های تازه طلا را بررسی کن و یک تحلیل چندافقی با ریسک رویداد بساز.",
+      "پرتفوی من را با تحلیل تازه بازار و سیاست ریسک بررسی کن؛ فعلاً معامله نکن.",
+      "سیگنال‌های قبلی را بدون look-ahead بک‌تست و با shadow trade کالیبره کن."
+    ],
+    "brandColor": "#CF8C06",
+    "logo": "./assets/wallgold-monogram.svg",
+    "logoDark": "./assets/wallgold-monogram.svg"
   }
 }

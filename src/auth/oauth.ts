@@ -6,8 +6,10 @@ import { config } from '../config.js';
 import { WallGoldApiError, WallGoldClient } from '../wallgold/client.js';
 
 const RESOURCE_SCOPE = 'wallgold:read';
+const MARKET_SCOPE = 'wallgold:market';
+const PORTFOLIO_SCOPE = 'wallgold:portfolio';
 const OFFLINE_SCOPE = 'offline_access';
-const SUPPORTED_SCOPES = new Set([RESOURCE_SCOPE, OFFLINE_SCOPE]);
+const SUPPORTED_SCOPES = new Set([RESOURCE_SCOPE, MARKET_SCOPE, PORTFOLIO_SCOPE, OFFLINE_SCOPE]);
 const AUTH_REQUEST_TTL_MS = 10 * 60 * 1000;
 const AUTH_CODE_TTL_MS = 5 * 60 * 1000;
 const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -119,14 +121,32 @@ function escapeHtml(value: unknown) {
 
 function normalizeScopes(raw: unknown) {
   const requested = String(raw ?? '').split(/\s+/).filter(Boolean);
-  const values = requested.length ? requested : [RESOURCE_SCOPE, OFFLINE_SCOPE];
+  const values = requested.length ? requested : [RESOURCE_SCOPE, MARKET_SCOPE, PORTFOLIO_SCOPE, OFFLINE_SCOPE];
   for (const scope of values) {
     if (!SUPPORTED_SCOPES.has(scope)) throw new Error(`unsupported_scope:${scope}`);
   }
   const granted = new Set(values);
   granted.add(RESOURCE_SCOPE);
+  if (granted.has(RESOURCE_SCOPE) && !granted.has(MARKET_SCOPE) && !granted.has(PORTFOLIO_SCOPE)) {
+    granted.add(MARKET_SCOPE);
+    granted.add(PORTFOLIO_SCOPE);
+  }
   return [...granted].join(' ');
 }
+
+function selectedScopes(body: Record<string, unknown>, allowedScope: string) {
+  const allowed = new Set(allowedScope.split(/\s+/));
+  const selected = [
+    body.permission_market === 'on' && allowed.has(MARKET_SCOPE) ? MARKET_SCOPE : null,
+    body.permission_portfolio === 'on' && allowed.has(PORTFOLIO_SCOPE) ? PORTFOLIO_SCOPE : null,
+  ].filter((scope): scope is string => Boolean(scope));
+  if (!selected.length) throw new Error('حداقل یک دسترسی برای ادامه اتصال باید فعال باشد.');
+  if (allowed.has(OFFLINE_SCOPE)) selected.push(OFFLINE_SCOPE);
+  selected.unshift(RESOURCE_SCOPE);
+  return [...new Set(selected)].join(' ');
+}
+
+const WALLGOLD_MONOGRAM = `<svg width="56" height="40" viewBox="0 0 56 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="نشان وال‌گلد" role="img"><path d="M47.2052 15.5735L42.2181 10.36C42.0299 10.1722 41.7904 10.0738 41.5509 10.0738C41.3113 10.0738 41.0633 10.1722 40.8836 10.36L35.8965 15.5735C35.7084 15.7702 35.6228 16.0206 35.6228 16.271C35.6228 16.5214 35.7169 16.7807 35.8965 16.9685L40.8836 22.182C41.0718 22.3698 41.3113 22.4682 41.5509 22.4682C41.7904 22.4682 42.0384 22.3698 42.2181 22.182L47.2052 16.9685C47.3934 16.7718 47.4789 16.5214 47.2052 15.5735Z" fill="#CF8C06"/><path d="M27.7444 10.2884C27.3766 9.90387 26.7778 9.90387 26.4099 10.2884L21.4228 15.5019C21.055 15.8864 20.4562 15.8864 20.0884 15.5019L15.1184 10.3063C14.7506 9.92175 14.1518 9.92175 13.784 10.3063L8.79687 15.5198C8.42904 15.9043 8.42904 16.5303 8.79687 16.9148L21.0379 29.7116C21.4057 30.0961 22.0045 30.0961 22.3724 29.7116L24.451 27.5386L27.368 24.4981C27.7358 24.1136 28.3346 24.1136 28.7025 24.4981L33.6895 29.7116C34.0574 30.0961 34.6562 30.0961 35.024 29.7116L40.0111 24.4981C40.3789 24.1136 40.3789 23.4876 40.0111 23.1031L27.7444 10.2884Z" fill="#2D2D2D"/></svg>`;
 
 function redirectWithParams(url: string, params: Record<string, string | undefined>) {
   const out = new URL(url);
@@ -188,7 +208,7 @@ function securityHeaders(req: Request, res: Response, scriptNonce = randomBytes(
   res.setHeader('Content-Security-Policy', `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${scriptNonce}'; form-action ${origin}; frame-ancestors 'none'; base-uri 'none'; object-src 'none'`);
 }
 
-function authorizationPage(input: { requestId: string; clientName: string; scope: string; formAction: string; scriptNonce: string; error?: string }) {
+function authorizationPage(input: { requestId: string; clientName: string; scope: string; formAction: string; scriptNonce: string; marketEnabled: boolean; portfolioEnabled: boolean; error?: string }) {
   const error = input.error ? `<div class="error" role="alert"><strong>❌ اتصال ناموفق بود</strong><span>${escapeHtml(input.error)}</span></div>` : '';
   return `<!doctype html>
 <html lang="fa" dir="rtl">
@@ -196,18 +216,18 @@ function authorizationPage(input: { requestId: string; clientName: string; scope
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>اتصال WallGold AI</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,#352814 0,#111 42%,#070707 100%);color:#f5f0e6;font-family:Tahoma,Arial,sans-serif;padding:24px}.card{width:min(520px,100%);background:linear-gradient(180deg,rgba(31,31,31,.98),rgba(14,14,14,.98));border:1px solid #725721;border-radius:24px;box-shadow:0 24px 80px #0009;padding:30px}.brand{display:flex;align-items:center;gap:14px;margin-bottom:24px}.logo{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#f8ce63,#9b6810);color:#15100a;font-size:34px;font-weight:900;box-shadow:inset 0 1px #fff8,0 8px 30px #b77b2433}.brand h1{font-size:22px;margin:0}.brand p{margin:5px 0 0;color:#aaa;font-size:13px}.notice{background:#17140e;border:1px solid #493a1d;border-radius:14px;padding:14px 16px;color:#d8c69e;font-size:13px;line-height:1.9;margin:18px 0}.error{background:#321414;border:1px solid #7f3030;border-radius:12px;padding:12px 14px;color:#ffb9b9;margin:14px 0;font-size:13px;display:grid;gap:6px}.field label{display:block;font-weight:700;margin-bottom:9px}.field input{width:100%;background:#090909;border:1px solid #4b412d;color:#fff;border-radius:12px;padding:14px;font:inherit;direction:ltr;outline:none}.field input:focus{border-color:#d4a93d;box-shadow:0 0 0 3px #d4a93d22}.help{font-size:12px;line-height:1.8;color:#aaa;margin-top:9px}.help a{color:#e6bd55;text-decoration:none}.permissions{display:grid;gap:8px;margin:20px 0;font-size:13px}.permissions div{display:flex;justify-content:space-between;background:#101010;border-radius:10px;padding:10px 12px}.ok{color:#7ce7a6}.off{color:#e8b26c}.actions{display:grid;gap:10px;margin-top:22px}.primary,.secondary{border:0;border-radius:12px;padding:14px 16px;font:inherit;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,#f2c85d,#b77a17);color:#171109}.secondary{background:#242424;color:#bbb}.primary:disabled,.secondary:disabled{cursor:wait;opacity:.7}.spinner{display:inline-block;margin-left:8px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.foot{margin-top:18px;color:#777;font-size:11px;line-height:1.8;text-align:center}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,#352814 0,#111 42%,#070707 100%);color:#f5f0e6;font-family:Tahoma,Arial,sans-serif;padding:24px}.card{width:min(520px,100%);background:linear-gradient(180deg,rgba(31,31,31,.98),rgba(14,14,14,.98));border:1px solid #725721;border-radius:24px;box-shadow:0 24px 80px #0009;padding:30px}.brand{display:flex;align-items:center;gap:14px;margin-bottom:24px}.logo{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;background:#fff;border:1px solid #725721;padding:8px;box-shadow:0 8px 30px #b77b2433}.logo svg{width:100%;height:100%}.brand h1{font-size:22px;margin:0}.brand p{margin:5px 0 0;color:#aaa;font-size:13px}.notice{background:#17140e;border:1px solid #493a1d;border-radius:14px;padding:14px 16px;color:#d8c69e;font-size:13px;line-height:1.9;margin:18px 0}.error{background:#321414;border:1px solid #7f3030;border-radius:12px;padding:12px 14px;color:#ffb9b9;margin:14px 0;font-size:13px;display:grid;gap:6px}.field label{display:block;font-weight:700;margin-bottom:9px}.field input{width:100%;background:#090909;border:1px solid #4b412d;color:#fff;border-radius:12px;padding:14px;font:inherit;direction:ltr;outline:none}.field input:focus{border-color:#d4a93d;box-shadow:0 0 0 3px #d4a93d22}.help{font-size:12px;line-height:1.8;color:#aaa;margin-top:9px}.help a{color:#e6bd55;text-decoration:none}.permissions{display:grid;gap:8px;margin:20px 0;font-size:13px}.permission{display:flex;align-items:center;justify-content:space-between;background:#101010;border-radius:10px;padding:10px 12px;cursor:pointer}.permission span{display:grid;gap:3px}.permission small{color:#888;font-size:11px}.permission input{width:18px;height:18px;accent-color:#d4a93d}.permission.locked{cursor:not-allowed;opacity:.65}.actions{display:grid;gap:10px;margin-top:22px}.primary,.secondary{border:0;border-radius:12px;padding:14px 16px;font:inherit;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,#f2c85d,#b77a17);color:#171109}.secondary{background:#242424;color:#bbb}.primary:disabled,.secondary:disabled{cursor:wait;opacity:.7}.spinner{display:inline-block;margin-left:8px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.foot{margin-top:18px;color:#777;font-size:11px;line-height:1.8;text-align:center}
 </style>
 </head>
 <body><main class="card">
-<div class="brand"><div class="logo">W</div><div><h1>اتصال WallGold AI</h1><p>اتصال امن حساب وال‌گلد به ChatGPT</p></div></div>
+<div class="brand"><div class="logo">${WALLGOLD_MONOGRAM}</div><div><h1>اتصال WallGold AI</h1><p>اتصال امن حساب وال‌گلد به ChatGPT</p></div></div>
 <p>برای فعال‌شدن موجودی، قیمت اختصاصی و تحلیل پرتفوی، API Key وال‌گلد را اینجا وارد کن.</p>
 <div class="notice">API Key در پیام ChatGPT یا ورودی ابزار قرار نمی‌گیرد. در نسخه آزمایشی Codespaces کلید روی دیسک ذخیره نمی‌شود و فقط تا زمان روشن‌بودن همین سرور در حافظه باقی می‌ماند.</div>
 ${error}
 <form method="post" action="${escapeHtml(input.formAction)}" autocomplete="off">
 <input type="hidden" name="request_id" value="${escapeHtml(input.requestId)}">
 <div class="field"><label for="api_key">API Key وال‌گلد</label><input id="api_key" name="api_key" type="password" required minlength="8" maxlength="4096" autocomplete="off" placeholder="کلید را فقط اینجا وارد کن"><div class="help">کلید را از <a href="https://developers.wallgold.ir/fa/docs/api-key" target="_blank" rel="noopener noreferrer">راهنمای رسمی WallGold</a> بساز. این فرم قبل از اتصال، کلید را با API خصوصی WallGold بررسی می‌کند.</div></div>
-<div class="permissions"><div><span>مشاهده بازار و قیمت خصوصی</span><b class="ok">فعال</b></div><div><span>مشاهده موجودی و پرتفوی</span><b class="ok">فعال</b></div><div><span>ثبت سفارش واقعی</span><b class="off">غیرفعال</b></div></div>
+<div class="permissions"><label class="permission"><span>مشاهده بازار و قیمت خصوصی<small>قیمت و داده بازار اختصاصی WallGold</small></span><input type="checkbox" name="permission_market" ${input.marketEnabled ? 'checked' : ''} aria-label="فعال‌سازی مشاهده بازار و قیمت خصوصی"></label><label class="permission"><span>مشاهده موجودی و پرتفوی<small>موجودی و دارایی‌های حساب</small></span><input type="checkbox" name="permission_portfolio" ${input.portfolioEnabled ? 'checked' : ''} aria-label="فعال‌سازی مشاهده موجودی و پرتفوی"></label><label class="permission locked"><span>ثبت سفارش واقعی<small>برای این اتصال و نسخه عمومی غیرفعال است</small></span><input type="checkbox" disabled aria-label="ثبت سفارش واقعی غیرفعال است"></label></div>
 <div class="actions"><button class="primary" name="decision" value="approve" type="submit">اتصال حساب و بازگشت به ChatGPT</button><button class="secondary" name="decision" value="deny" type="submit" formnovalidate>لغو</button></div>
 </form>
 <div class="foot">درخواست اتصال از «${escapeHtml(input.clientName)}» · دسترسی: ${escapeHtml(input.scope)}</div>
@@ -264,7 +284,7 @@ export function registerOAuthRoutes(app: Express) {
     res.json({
       resource: `${base}/mcp`,
       authorization_servers: [base],
-      scopes_supported: [RESOURCE_SCOPE],
+      scopes_supported: [RESOURCE_SCOPE, MARKET_SCOPE, PORTFOLIO_SCOPE],
       bearer_methods_supported: ['header'],
     });
   };
@@ -284,7 +304,7 @@ export function registerOAuthRoutes(app: Express) {
       grant_types_supported: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_methods_supported: ['none'],
       code_challenge_methods_supported: ['S256'],
-      scopes_supported: [RESOURCE_SCOPE, OFFLINE_SCOPE],
+      scopes_supported: [RESOURCE_SCOPE, MARKET_SCOPE, PORTFOLIO_SCOPE, OFFLINE_SCOPE],
     });
   });
 
@@ -354,7 +374,7 @@ export function registerOAuthRoutes(app: Express) {
       resource: expectedResource,
       expiresAtMs: Date.now() + AUTH_REQUEST_TTL_MS,
     });
-    return res.status(200).send(authorizationPage({ requestId, clientName: client.clientName, scope, formAction: `${base}/oauth/authorize`, scriptNonce }));
+    return res.status(200).send(authorizationPage({ requestId, clientName: client.clientName, scope, formAction: `${base}/oauth/authorize`, scriptNonce, marketEnabled: scope.split(/\s+/).includes(MARKET_SCOPE), portfolioEnabled: scope.split(/\s+/).includes(PORTFOLIO_SCOPE) }));
   });
 
   app.post('/oauth/authorize', async (req, res) => {
@@ -369,15 +389,18 @@ export function registerOAuthRoutes(app: Express) {
       return res.redirect(redirectWithParams(pending.redirectUri, { error: 'access_denied', state: pending.state }));
     }
     const base = externalBaseUrl(req);
-    if (!apiKeyAttemptAllowed(req)) return res.status(429).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, formAction: `${base}/oauth/authorize`, scriptNonce, error: 'تعداد تلاش‌ها زیاد شده است. یک دقیقه صبر کن و دوباره تلاش کن.' }));
+    const marketEnabled = req.body?.permission_market === 'on';
+    const portfolioEnabled = req.body?.permission_portfolio === 'on';
+    if (!apiKeyAttemptAllowed(req)) return res.status(429).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, formAction: `${base}/oauth/authorize`, scriptNonce, marketEnabled, portfolioEnabled, error: 'تعداد تلاش‌ها زیاد شده است. یک دقیقه صبر کن و دوباره تلاش کن.' }));
     try {
+      const grantedScope = selectedScopes(req.body as Record<string, unknown>, pending.scope);
       const apiKey = await validateWallGoldApiKey(String(req.body?.api_key ?? ''));
       pendingAuthorizations.delete(requestId);
       const code = randomOpaque('wgcod');
       authorizationCodes.set(code, {
         clientId: pending.clientId,
         redirectUri: pending.redirectUri,
-        scope: pending.scope,
+        scope: grantedScope,
         codeChallenge: pending.codeChallenge,
         resource: pending.resource,
         apiKey,
@@ -387,7 +410,7 @@ export function registerOAuthRoutes(app: Express) {
       return res.status(200).send(successPage(callback, scriptNonce));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'اتصال به WallGold برقرار نشد.';
-      return res.status(400).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, formAction: `${base}/oauth/authorize`, scriptNonce, error: message }));
+      return res.status(400).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, formAction: `${base}/oauth/authorize`, scriptNonce, marketEnabled, portfolioEnabled, error: message }));
     }
   });
 

@@ -68,6 +68,10 @@ test('OAuth discovery, consent UX, API-key validation, callback and PKCE token e
     assert.equal(authorize.status, 200);
     const authorizeHtml = await authorize.text();
     assert.ok(authorizeHtml.includes(`action="${base}/oauth/authorize"`));
+    assert.match(authorizeHtml, /wallgold-monogram|نشان وال‌گلد|viewBox="0 0 56 40"/);
+    assert.match(authorizeHtml, /name="permission_market" checked/);
+    assert.match(authorizeHtml, /name="permission_portfolio" checked/);
+    assert.match(authorizeHtml, /ثبت سفارش واقعی/);
     assert.match(authorizeHtml, /در حال بررسی API Key و اتصال به WallGold/);
     assert.match(authorize.headers.get('content-security-policy') ?? '', new RegExp(`form-action ${base}`));
     const requestId = authorizeHtml.match(/name="request_id" value="([^"]+)"/)?.[1];
@@ -76,7 +80,7 @@ test('OAuth discovery, consent UX, API-key validation, callback and PKCE token e
     const invalid = await fetch(`${base}/oauth/authorize`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ request_id: requestId, decision: 'approve', api_key: 'invalid-key' }),
+      body: new URLSearchParams({ request_id: requestId, decision: 'approve', api_key: 'invalid-key', permission_market: 'on', permission_portfolio: 'on' }),
     });
     assert.equal(invalid.status, 400);
     const invalidHtml = await invalid.text();
@@ -86,7 +90,7 @@ test('OAuth discovery, consent UX, API-key validation, callback and PKCE token e
     const successful = await fetch(`${base}/oauth/authorize`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ request_id: requestId, decision: 'approve', api_key: 'valid-key' }),
+      body: new URLSearchParams({ request_id: requestId, decision: 'approve', api_key: 'valid-key', permission_market: 'on' }),
     });
     assert.equal(successful.status, 200);
     const successHtml = await successful.text();
@@ -105,8 +109,10 @@ test('OAuth discovery, consent UX, API-key validation, callback and PKCE token e
       body: new URLSearchParams({ grant_type: 'authorization_code', client_id: client.client_id, code, redirect_uri: callback, code_verifier: verifier, resource: `${base}/mcp` }),
     });
     assert.equal(token.status, 200);
-    const tokenBody = await token.json() as { access_token: string };
+    const tokenBody = await token.json() as { access_token: string; scope: string };
     assert.ok(tokenBody.access_token);
+    assert.match(tokenBody.scope, /wallgold:market/);
+    assert.doesNotMatch(tokenBody.scope, /wallgold:portfolio/);
   } finally {
     globalThis.fetch = originalFetch;
     await new Promise<void>(resolve => server.close(() => resolve()));

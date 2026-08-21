@@ -178,24 +178,25 @@ function apiKeyAttemptAllowed(req: Request) {
   return true;
 }
 
-function securityHeaders(res: Response) {
+function securityHeaders(req: Request, res: Response, scriptNonce = randomBytes(16).toString('base64url')) {
+  const origin = externalBaseUrl(req);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+  res.setHeader('Content-Security-Policy', `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${scriptNonce}'; form-action ${origin}; frame-ancestors 'none'; base-uri 'none'; object-src 'none'`);
 }
 
-function authorizationPage(input: { requestId: string; clientName: string; scope: string; error?: string }) {
-  const error = input.error ? `<div class="error">${escapeHtml(input.error)}</div>` : '';
+function authorizationPage(input: { requestId: string; clientName: string; scope: string; formAction: string; scriptNonce: string; error?: string }) {
+  const error = input.error ? `<div class="error" role="alert"><strong>❌ اتصال ناموفق بود</strong><span>${escapeHtml(input.error)}</span></div>` : '';
   return `<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>اتصال WallGold AI</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,#352814 0,#111 42%,#070707 100%);color:#f5f0e6;font-family:Tahoma,Arial,sans-serif;padding:24px}.card{width:min(520px,100%);background:linear-gradient(180deg,rgba(31,31,31,.98),rgba(14,14,14,.98));border:1px solid #725721;border-radius:24px;box-shadow:0 24px 80px #0009;padding:30px}.brand{display:flex;align-items:center;gap:14px;margin-bottom:24px}.logo{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#f8ce63,#9b6810);color:#15100a;font-size:34px;font-weight:900;box-shadow:inset 0 1px #fff8,0 8px 30px #b77b2433}.brand h1{font-size:22px;margin:0}.brand p{margin:5px 0 0;color:#aaa;font-size:13px}.notice{background:#17140e;border:1px solid #493a1d;border-radius:14px;padding:14px 16px;color:#d8c69e;font-size:13px;line-height:1.9;margin:18px 0}.error{background:#321414;border:1px solid #7f3030;border-radius:12px;padding:12px 14px;color:#ffb9b9;margin:14px 0;font-size:13px}.field label{display:block;font-weight:700;margin-bottom:9px}.field input{width:100%;background:#090909;border:1px solid #4b412d;color:#fff;border-radius:12px;padding:14px;font:inherit;direction:ltr;outline:none}.field input:focus{border-color:#d4a93d;box-shadow:0 0 0 3px #d4a93d22}.help{font-size:12px;line-height:1.8;color:#aaa;margin-top:9px}.help a{color:#e6bd55;text-decoration:none}.permissions{display:grid;gap:8px;margin:20px 0;font-size:13px}.permissions div{display:flex;justify-content:space-between;background:#101010;border-radius:10px;padding:10px 12px}.ok{color:#7ce7a6}.off{color:#e8b26c}.actions{display:grid;gap:10px;margin-top:22px}.primary,.secondary{border:0;border-radius:12px;padding:14px 16px;font:inherit;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,#f2c85d,#b77a17);color:#171109}.secondary{background:#242424;color:#bbb}.foot{margin-top:18px;color:#777;font-size:11px;line-height:1.8;text-align:center}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,#352814 0,#111 42%,#070707 100%);color:#f5f0e6;font-family:Tahoma,Arial,sans-serif;padding:24px}.card{width:min(520px,100%);background:linear-gradient(180deg,rgba(31,31,31,.98),rgba(14,14,14,.98));border:1px solid #725721;border-radius:24px;box-shadow:0 24px 80px #0009;padding:30px}.brand{display:flex;align-items:center;gap:14px;margin-bottom:24px}.logo{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,#f8ce63,#9b6810);color:#15100a;font-size:34px;font-weight:900;box-shadow:inset 0 1px #fff8,0 8px 30px #b77b2433}.brand h1{font-size:22px;margin:0}.brand p{margin:5px 0 0;color:#aaa;font-size:13px}.notice{background:#17140e;border:1px solid #493a1d;border-radius:14px;padding:14px 16px;color:#d8c69e;font-size:13px;line-height:1.9;margin:18px 0}.error{background:#321414;border:1px solid #7f3030;border-radius:12px;padding:12px 14px;color:#ffb9b9;margin:14px 0;font-size:13px;display:grid;gap:6px}.field label{display:block;font-weight:700;margin-bottom:9px}.field input{width:100%;background:#090909;border:1px solid #4b412d;color:#fff;border-radius:12px;padding:14px;font:inherit;direction:ltr;outline:none}.field input:focus{border-color:#d4a93d;box-shadow:0 0 0 3px #d4a93d22}.help{font-size:12px;line-height:1.8;color:#aaa;margin-top:9px}.help a{color:#e6bd55;text-decoration:none}.permissions{display:grid;gap:8px;margin:20px 0;font-size:13px}.permissions div{display:flex;justify-content:space-between;background:#101010;border-radius:10px;padding:10px 12px}.ok{color:#7ce7a6}.off{color:#e8b26c}.actions{display:grid;gap:10px;margin-top:22px}.primary,.secondary{border:0;border-radius:12px;padding:14px 16px;font:inherit;font-weight:800;cursor:pointer}.primary{background:linear-gradient(135deg,#f2c85d,#b77a17);color:#171109}.secondary{background:#242424;color:#bbb}.primary:disabled,.secondary:disabled{cursor:wait;opacity:.7}.spinner{display:inline-block;margin-left:8px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.foot{margin-top:18px;color:#777;font-size:11px;line-height:1.8;text-align:center}
 </style>
 </head>
 <body><main class="card">
@@ -203,14 +204,19 @@ function authorizationPage(input: { requestId: string; clientName: string; scope
 <p>برای فعال‌شدن موجودی، قیمت اختصاصی و تحلیل پرتفوی، API Key وال‌گلد را اینجا وارد کن.</p>
 <div class="notice">API Key در پیام ChatGPT یا ورودی ابزار قرار نمی‌گیرد. در نسخه آزمایشی Codespaces کلید روی دیسک ذخیره نمی‌شود و فقط تا زمان روشن‌بودن همین سرور در حافظه باقی می‌ماند.</div>
 ${error}
-<form method="post" action="/oauth/authorize" autocomplete="off">
+<form method="post" action="${escapeHtml(input.formAction)}" autocomplete="off">
 <input type="hidden" name="request_id" value="${escapeHtml(input.requestId)}">
 <div class="field"><label for="api_key">API Key وال‌گلد</label><input id="api_key" name="api_key" type="password" required minlength="8" maxlength="4096" autocomplete="off" placeholder="کلید را فقط اینجا وارد کن"><div class="help">کلید را از <a href="https://developers.wallgold.ir/fa/docs/api-key" target="_blank" rel="noopener noreferrer">راهنمای رسمی WallGold</a> بساز. این فرم قبل از اتصال، کلید را با API خصوصی WallGold بررسی می‌کند.</div></div>
 <div class="permissions"><div><span>مشاهده بازار و قیمت خصوصی</span><b class="ok">فعال</b></div><div><span>مشاهده موجودی و پرتفوی</span><b class="ok">فعال</b></div><div><span>ثبت سفارش واقعی</span><b class="off">غیرفعال</b></div></div>
 <div class="actions"><button class="primary" name="decision" value="approve" type="submit">اتصال حساب و بازگشت به ChatGPT</button><button class="secondary" name="decision" value="deny" type="submit" formnovalidate>لغو</button></div>
 </form>
 <div class="foot">درخواست اتصال از «${escapeHtml(input.clientName)}» · دسترسی: ${escapeHtml(input.scope)}</div>
+<script nonce="${escapeHtml(input.scriptNonce)}">document.querySelector('form')?.addEventListener('submit',event=>{const submitter=event.submitter;if(!(submitter instanceof HTMLButtonElement)||submitter.value!=='approve')return;submitter.disabled=true;submitter.innerHTML='<span class="spinner" aria-hidden="true">⟳</span> در حال بررسی API Key و اتصال به WallGold...';document.querySelectorAll('button').forEach(button=>{button.disabled=true})});</script>
 </main></body></html>`;
+}
+
+function successPage(redirectUrl: string, scriptNonce: string) {
+  return `<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>اتصال برقرار شد</title><style>body{margin:0;background:#0b0b0b;color:#eee;font-family:Tahoma,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}main{max-width:560px;border:1px solid #28633f;border-radius:18px;padding:26px;background:#151515;text-align:center}h2{color:#7ce7a6}p{line-height:1.9;color:#bbb}</style><main><h2>✅ اتصال برقرار شد</h2><p>در حال بازگشت به ChatGPT...</p></main><script nonce="${escapeHtml(scriptNonce)}">setTimeout(()=>location.replace(${JSON.stringify(redirectUrl)}),600);</script></html>`;
 }
 
 function simpleErrorPage(title: string, detail: string) {
@@ -283,9 +289,11 @@ export function registerOAuthRoutes(app: Express) {
   });
 
   app.post('/oauth/register', async (req, res) => {
-    securityHeaders(res);
+    securityHeaders(req, res);
     await ensureClientsLoaded();
-    const rawRedirectUris: unknown[] = Array.isArray(req.body?.redirect_uris) ? req.body.redirect_uris : [];
+    const rawRedirectUris: unknown[] = Array.isArray(req.body?.redirect_uris)
+      ? req.body.redirect_uris
+      : [req.body?.redirect_uris];
     const redirectUris = rawRedirectUris.filter((v): v is string => typeof v === 'string');
     if (!redirectUris.length || !redirectUris.every(allowedOpenAIRedirect)) {
       return res.status(400).json({ error: 'invalid_redirect_uri', error_description: 'Only HTTPS OpenAI/ChatGPT redirect URIs are allowed.' });
@@ -315,7 +323,8 @@ export function registerOAuthRoutes(app: Express) {
   });
 
   app.get('/oauth/authorize', async (req, res) => {
-    securityHeaders(res);
+    const scriptNonce = randomBytes(16).toString('base64url');
+    securityHeaders(req, res, scriptNonce);
     await ensureClientsLoaded();
     pruneExpired();
     const clientId = String(req.query.client_id ?? '');
@@ -333,6 +342,7 @@ export function registerOAuthRoutes(app: Express) {
     const requestedResource = String(req.query.resource ?? expectedResource);
     if (!resourceMatches(requestedResource, expectedResource)) return res.redirect(redirectWithParams(redirectUri, { error: 'invalid_target', state: String(req.query.state ?? '') || undefined }));
     const requestId = randomOpaque('wgp');
+    const base = externalBaseUrl(req);
     pendingAuthorizations.set(requestId, {
       requestId,
       clientId,
@@ -344,11 +354,12 @@ export function registerOAuthRoutes(app: Express) {
       resource: expectedResource,
       expiresAtMs: Date.now() + AUTH_REQUEST_TTL_MS,
     });
-    return res.status(200).send(authorizationPage({ requestId, clientName: client.clientName, scope }));
+    return res.status(200).send(authorizationPage({ requestId, clientName: client.clientName, scope, formAction: `${base}/oauth/authorize`, scriptNonce }));
   });
 
   app.post('/oauth/authorize', async (req, res) => {
-    securityHeaders(res);
+    const scriptNonce = randomBytes(16).toString('base64url');
+    securityHeaders(req, res, scriptNonce);
     pruneExpired();
     const requestId = String(req.body?.request_id ?? '');
     const pending = pendingAuthorizations.get(requestId);
@@ -357,7 +368,8 @@ export function registerOAuthRoutes(app: Express) {
       pendingAuthorizations.delete(requestId);
       return res.redirect(redirectWithParams(pending.redirectUri, { error: 'access_denied', state: pending.state }));
     }
-    if (!apiKeyAttemptAllowed(req)) return res.status(429).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, error: 'تعداد تلاش‌ها زیاد شده است. یک دقیقه صبر کن و دوباره تلاش کن.' }));
+    const base = externalBaseUrl(req);
+    if (!apiKeyAttemptAllowed(req)) return res.status(429).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, formAction: `${base}/oauth/authorize`, scriptNonce, error: 'تعداد تلاش‌ها زیاد شده است. یک دقیقه صبر کن و دوباره تلاش کن.' }));
     try {
       const apiKey = await validateWallGoldApiKey(String(req.body?.api_key ?? ''));
       pendingAuthorizations.delete(requestId);
@@ -371,15 +383,16 @@ export function registerOAuthRoutes(app: Express) {
         apiKey,
         expiresAtMs: Date.now() + AUTH_CODE_TTL_MS,
       });
-      return res.redirect(redirectWithParams(pending.redirectUri, { code, state: pending.state }));
+      const callback = redirectWithParams(pending.redirectUri, { code, state: pending.state });
+      return res.status(200).send(successPage(callback, scriptNonce));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'اتصال به WallGold برقرار نشد.';
-      return res.status(400).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, error: message }));
+      return res.status(400).send(authorizationPage({ requestId, clientName: pending.clientName, scope: pending.scope, formAction: `${base}/oauth/authorize`, scriptNonce, error: message }));
     }
   });
 
   app.post('/oauth/token', async (req, res) => {
-    securityHeaders(res);
+    securityHeaders(req, res);
     await ensureClientsLoaded();
     pruneExpired();
     const grantType = String(req.body?.grant_type ?? '');
@@ -415,7 +428,7 @@ export function registerOAuthRoutes(app: Express) {
   });
 
   app.post('/oauth/revoke', (req, res) => {
-    securityHeaders(res);
+    securityHeaders(req, res);
     const token = String(req.body?.token ?? '');
     if (token) {
       accessTokens.delete(token);

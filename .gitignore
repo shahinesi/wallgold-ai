@@ -27,6 +27,15 @@ data/
 # logs
 logs/
 *.log
+
+# runtime state
+/data/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -48,3 +57,14 @@ yarn-error.log*
 # temporary
 .tmp/
 tmp/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+/backend/node_modules
+/backend/dist
+/backend/build
+/.cursor
+coverage/
+/logs
+*.log
